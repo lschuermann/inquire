@@ -73,8 +73,7 @@ const DEFAULT_HELP_MESSAGE_WITH_AC: &str = "↑↓ to move, tab to autocomplete,
 ///     Err(_) => println!("An error happened when asking for your name, try again later."),
 /// }
 /// ```
-#[derive(Clone)]
-pub struct Text<'a> {
+pub struct Text<'a, 'b> {
     /// Message to be presented to the user.
     pub message: &'a str,
 
@@ -98,7 +97,7 @@ pub struct Text<'a> {
     pub formatter: StringFormatter<'a>,
 
     /// Autocompleter responsible for handling suggestions and input completions.
-    pub autocompleter: Option<Box<dyn Autocomplete>>,
+    pub autocompleter: Option<Box<dyn Autocomplete + 'b>>,
 
     /// Collection of validators to apply to the user input.
     ///
@@ -106,7 +105,7 @@ pub struct Text<'a> {
     /// only the first validation error that might appear.
     ///
     /// The possible error is displayed to the user one line above the prompt.
-    pub validators: Vec<Box<dyn StringValidator>>,
+    pub validators: Vec<Box<dyn StringValidator + 'b>>,
 
     /// Page size of the suggestions displayed to the user, when applicable.
     pub page_size: usize,
@@ -122,7 +121,24 @@ pub struct Text<'a> {
     pub render_config: RenderConfig<'a>,
 }
 
-impl<'a> Text<'a> {
+impl<'a> Clone for Text<'a, 'static> {
+    fn clone(&self) -> Self {
+        Text {
+            message: self.message,
+            initial_value: self.initial_value.clone(),
+            default: self.default.clone(),
+            placeholder: self.placeholder.clone(),
+            help_message: self.help_message.clone(),
+            formatter: self.formatter,
+            autocompleter: self.autocompleter.clone(),
+            validators: self.validators.clone(),
+            page_size: self.page_size.clone(),
+            render_config: self.render_config.clone(),
+        }
+    }
+}
+
+impl<'a, 'b> Text<'a, 'b> {
     /// Default formatter, set to [DEFAULT_STRING_FORMATTER](crate::formatter::DEFAULT_STRING_FORMATTER)
     pub const DEFAULT_FORMATTER: StringFormatter<'a> = DEFAULT_STRING_FORMATTER;
 
@@ -182,7 +198,7 @@ impl<'a> Text<'a> {
     /// Sets a new autocompleter
     pub fn with_autocomplete<AC>(mut self, ac: AC) -> Self
     where
-        AC: Autocomplete + 'static,
+        AC: Autocomplete + 'b,
     {
         self.autocompleter = Some(Box::new(ac));
         self
@@ -210,7 +226,7 @@ impl<'a> Text<'a> {
     /// The possible error is displayed to the user one line above the prompt.
     pub fn with_validator<V>(mut self, validator: V) -> Self
     where
-        V: StringValidator + 'static,
+        V: StringValidator + 'b,
     {
         self.validators.push(Box::new(validator));
         self
